@@ -195,13 +195,23 @@ async def index() -> HTMLResponse:
     const btn = document.getElementById('openBtn');
 
     function init() {
-      const user = tg.initDataUnsafe && tg.initDataUnsafe.user;
-      if (!user || !user.id) {
-        btn.textContent = 'Не удалось получить Telegram ID';
-        return;
+      const unsafe = tg.initDataUnsafe || {};
+      const user = unsafe.user;
+
+      let tid = null;
+
+      if (user && user.id) {
+        tid = String(user.id);
+      } else if (tg.initData && tg.initData.length > 0) {
+        // Фолбэк: используем всю строку initData как идентификатор.
+        // Это не идеально, но позволит работать даже если user пустой.
+        tid = tg.initData;
       }
 
-      const tid = String(user.id);
+      if (!tid) {
+        btn.textContent = 'Telegram не передал ID. Открой миниаппу из диалога с ботом.';
+        return;
+      }
 
       fetch('/register', {
         method: 'POST',
