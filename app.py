@@ -129,8 +129,10 @@ async def telegram_webhook(request: Request) -> Response:
     if tg_app is None:
         return Response(status_code=503, content="Bot not initialized")
 
-    data = await request.body()
-    await tg_app.update_queue.put(Update.de_json(data.decode("utf-8"), tg_app.bot))
+    # Тело запроса — JSON-объект от Telegram, его нужно распарсить в dict.
+    data = await request.json()
+    update = Update.de_json(data, tg_app.bot)
+    await tg_app.update_queue.put(update)
     return Response(status_code=204)
 
 
