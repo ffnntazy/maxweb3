@@ -81,7 +81,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await update.message.reply_text(
         "Привет!\n\n"
-        "Нажми кнопку ниже, чтобы открыть MAX в мини-приложении Telegram.",
+        "1) Получи свой Telegram ID у бота @Get_myidrobot.\n"
+        "2) Введи этот ID в открывшемся окне миниаппы.\n\n"
+        "После этого мы свяжем твой Telegram сессией MAX.",
         reply_markup=reply_markup,
     )
 
@@ -183,8 +185,9 @@ async def index() -> HTMLResponse:
 </head>
 <body>
   <div class="center">
-    <div>Подготовка моста к MAX…</div>
-    <button class="btn" id="openBtn" disabled>Открыть MAX</button>
+    <div id="status">Подготовка моста к MAX…</div>
+    <input id="tidInput" type="text" placeholder="Введите ваш Telegram ID" style="padding:8px 12px;border-radius:8px;border:none;outline:none;max-width:260px;width:80%;text-align:center;" />
+    <button class="btn" id="openBtn">Продолжить</button>
   </div>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -192,37 +195,32 @@ async def index() -> HTMLResponse:
     const tg = window.Telegram.WebApp;
     tg.expand();
 
+    const status = document.getElementById('status');
+    const input = document.getElementById('tidInput');
     const btn = document.getElementById('openBtn');
 
     function init() {
-      const unsafe = tg.initDataUnsafe || {};
-      const user = unsafe.user;
+      btn.onclick = () => {
+        const tid = (input.value || '').trim();
+        if (!tid) {
+          status.textContent = 'Введите Telegram ID, который вы получили у @Get_myidrobot';
+          return;
+        }
 
-      let tid = null;
+        btn.disabled = true;
+        status.textContent = 'Связываем ваш Telegram с MAX…';
 
-      if (user && user.id) {
-        tid = String(user.id);
-      } else if (tg.initData && tg.initData.length > 0) {
-        // Фолбэк: используем всю строку initData как идентификатор.
-        // Это не идеально, но позволит работать даже если user пустой.
-        tid = tg.initData;
-      }
-
-      if (!tid) {
-        btn.textContent = 'Telegram не передал ID. Открой миниаппу из диалога с ботом.';
-        return;
-      }
-
-      fetch('/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegram_user_id: tid })
-      }).finally(() => {
-        btn.disabled = false;
-        btn.onclick = () => {
+        fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telegram_user_id: tid })
+        }).then(() => {
           window.location.href = '/app?tid=' + encodeURIComponent(tid);
-        };
-      });
+        }).catch(() => {
+          status.textContent = 'Ошибка связи с сервером. Попробуйте ещё раз.';
+          btn.disabled = false;
+        });
+      };
     }
 
     document.addEventListener('DOMContentLoaded', init);
